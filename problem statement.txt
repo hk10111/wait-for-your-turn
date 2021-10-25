@@ -1,0 +1,27 @@
+Problem Definition:
+
+In this problem, you will emulate two process scheduling algorithms for different workloads and analyse their performance. The program(s) are to be written in C.
+
+You are required to create one master process (M) which spawns 3 child processes (C1, C2, C3). 
+
+    C1 is a compute-intensive process that adds n1 numbers in the range 1 to 1 million. 
+
+    C2 is an I/O intensive process that reads n2 numbers from a file and prints them to the console (range of numbers should be between 1 to 1 million). Assume that each number is present in a separate line in the file. C2 sends the message “Done Printing” to M using a pipe.
+
+    C3 is both compute and I/O intensive which reads n3 numbers (range from one to one million) from a file and adds them up. C1 and C3 communicate the results of their operations to M using pipes. 
+
+    Note that 3 separate pipes are to be used. The files along with the contents will be provided during the demo. Create your own file during testing your code. Give sample file structure.
+
+In M emulate the scheduling algorithms FCFS and RR with a fixed time quantum (quantum is user input). Assume the order of process creation is C1, C2 and C3. C1, C2 and C3 are to be scheduled only after all the 3 processes have been created by M. The emulation is to be done using the sleep() function. M will use shared memory segments with C1, C2 and C3 to communicate if C1, C2, C3 should sleep or wake up. Assume a uniprocessor environment. At a time only one of C1, C2 or C3 can be awake. Within C1, C2 and C3, use one thread to do the task and another to monitor communications from M and put the task thread to sleep, or wake it up. 
+
+The choice of the scheduling algorithm will be given as user input?
+
+n1, n2 and n3 constitute the process workload and are given as user inputs. Repeat for different sizes of workload. Ranges of n1, n2 and n3 are between 25 and one million.
+
+Output:
+
+    Sum of numbers in C1 and C3 printed in M along with the execution time.
+
+    Total turnaround time from process creation to ending for C1, C2 and C3 using the different scheduling algorithms. Total waiting time of each process. What can you comment on the performance of the different algorithms for different workloads? 
+
+    Plots of total turnaround time vs workload size and waiting time vs workload size for the different scheduling algorithms and child processes
