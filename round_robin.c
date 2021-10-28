@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 #include <time.h>
 #define SIZE 1000000
-#define TIME_QT 0.001
+#define TIME_QT 0.00000001
 /*
 Arguments format
 argc : number of arguments
@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
     char parent_message[]="0";
     memcpy(shmem,parent_message, sizeof(parent_message));
     int process_queue[4]={0,1,1,1};
+    double time_active[4]={0,0,0,0};
+    double time_end[4]={0,0,0,0};
 
     pid1 = fork();
     if (pid1 != 0)
@@ -64,7 +66,7 @@ int main(int argc, char *argv[])
         if (pid2 != 0)
         {
             pid3 = fork();
-
+            time_t time_creation=clock();
             if (pid3!= 0)
             {
               // Master Process
@@ -98,6 +100,17 @@ int main(int argc, char *argv[])
                   {
                     ;
                   }
+                  time_t time_burst=clock();
+                  double time_spent=(double)((time_burst-time_start)/CLOCKS_PER_SEC);
+                  if(time_spent<TIME_QT)
+                  {
+                    time_end[i]=(double)((time_burst-time_creation)/CLOCKS_PER_SEC);
+                    time_active[i]+=time_spent;
+                  }
+                  else
+                  {
+                    time_active[i]+=TIME_QT;
+                  }
 
                   if(atoi(shmem)==0)
                   {
@@ -117,6 +130,11 @@ int main(int argc, char *argv[])
               close(fd3[0]);
               printf("\nTHIS IS THE MASTER PROCESS, SUM FROM PROCESS 3 =  %lu\n",result_p3);
               //waitpid(pid3, &returnStatus, 0);
+
+              for(int i=1;i<4;i++)
+              {
+                printf("\nProcess %d Total Turnaround Time = %f s Total Waiting Time = %f",i,time_end[i],time_end[i]-time_active[i]);
+              }
               exit(0);
 
               }
