@@ -49,8 +49,9 @@ int main(int argc, char *argv[])
 
     //Creating a shared memory
     void* shmem = create_shared_memory(128);
-    char parent_message[]="4";
+    char parent_message[]="0";
     memcpy(shmem,parent_message, sizeof(parent_message));
+    int process_queue[4]={0,1,1,1};
 
     pid1 = fork();
     if (pid1 != 0)
@@ -69,37 +70,60 @@ int main(int argc, char *argv[])
               // Master Process
               close(fd3[1]);
               int returnStatus;
+              while(1)
+              {
+                int flag=0;
+                printf("\nStage ");
+                for(int i=1;i<4;i++)
+                {
+                  printf("%d ",process_queue[i]);
+                  if(process_queue[i]!=0)
+                  {
+                    flag=1;
+                  }
+                }
+                printf("\n");
+                if(!flag)
+                {
+                  break;
+                }
+                for(int i=1;i<4;i++)
+                {
+                  if(process_queue[i]==0)
+                  continue;
+                  time_t time_start=clock();
+                  parent_message[0]=(char)(i+'0');
+                  memcpy(shmem,parent_message, sizeof(parent_message));
+                  while((double)((clock()-time_start)/CLOCKS_PER_SEC)<TIME_QT&&atoi(shmem)==i)
+                  {
+                    ;
+                  }
 
-              parent_message[0]='1';
+                  if(atoi(shmem)==0)
+                  {
+                    process_queue[i]=0;
+                  }
+                }
+              }
 
-              memcpy(shmem,parent_message, sizeof(parent_message));
-
-              waitpid(pid1, &returnStatus, 0);
               long result_p1=0L;
               read(fd1[0], &result_p1, sizeof(result_p1));
               close(fd1[0]);
+              printf("\nTHIS IS THE MASTER PROCESS, SUM FROM PROCESS 1 =  %lu\n",result_p1);
+              //waitpid(pid1, &returnStatus, 0);
 
-              printf("\nMASTER PROCESS SUM FROM PROCESS 1 =  %lu\n",result_p1);
-
-
-              parent_message[0]='2';
-              memcpy(shmem,parent_message, sizeof(parent_message));
-              waitpid(pid2, &returnStatus, 0);
-
-              parent_message[0]='3';
-              memcpy(shmem,parent_message, sizeof(parent_message));
               long result_p3=0L;
-              while(result_p3==0L)
-              {
-                read(fd3[0], &result_p3, sizeof(result_p3));
-              }
+              read(fd3[0], &result_p3, sizeof(result_p3));
               close(fd3[0]);
-              printf("\nMASTER PROCESS SUM FROM PROCESS 3 =  %lu\n",result_p3);
-              waitpid(pid3, &returnStatus, 0);
+              printf("\nTHIS IS THE MASTER PROCESS, SUM FROM PROCESS 3 =  %lu\n",result_p3);
+              //waitpid(pid3, &returnStatus, 0);
+              exit(0);
+
               }
               else
               {
                 //Child process 3
+                char child_message[]="0";
                 long sum_p3=0;
                 close(fd3[0]);
                 FILE* fp=fopen("random.txt","r");
@@ -112,14 +136,17 @@ int main(int argc, char *argv[])
                 printf("\nChild process 3 sum = %lu",sum_p3);
                 write(fd3[1],&sum_p3,sizeof(sum_p3));
                 close(fd3[1]);
-                exit(0);
+                process_queue[3]=0;
+                printf("\nProcess 3 over");
+                memcpy(shmem,child_message, sizeof(child_message));
+
 
               }
             }
         else
         {
             //printf("\nchild process 2 ");
-
+            char child_message[]="0";
             FILE *fp1=fopen("random.txt","r");
             int lines_printed=0;
             printf("\nChild 2 printing");
@@ -133,13 +160,17 @@ int main(int argc, char *argv[])
               }
             }
             fclose(fp1);
-            exit(0);
+            process_queue[2]=0;
+            printf("\nProcess 2 over");
+            memcpy(shmem,child_message, sizeof(child_message));
+
         }
     }
     else
     {
         //close the output end of pipe
         close(fd1[0]);
+        char child_message[]="0";
         //printf("\nchild 1  %d\nmessage = %s\n",n1,(char*)shmem);
         time_t t;
         srand((unsigned) time(&t));
@@ -161,7 +192,11 @@ int main(int argc, char *argv[])
         }
         write(fd1[1],&sum_p1,sizeof(sum_p1));
         close(fd1[1]);
-        exit(0);
+        process_queue[1]=0;
+        printf("\nProcess 1 over");
+        memcpy(shmem,child_message, sizeof(child_message));
+
+
     }
     return 0;
 }

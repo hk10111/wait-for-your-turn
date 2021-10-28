@@ -7,30 +7,24 @@
 #include <sys/wait.h>
 #include <pthread.h>
 #define SIZE 10000
-
+char *s="hello";
 int main(int argc, char *argv[])
 {
     int pid1 = 0, pid2 = 0, pid3 = 0;
-    long result=99L;
-    int fd[2];
-    pipe(fd);
+
     printf("Parent before child %d",getpid());
     pid1 = fork();
     if(pid1!=0)
     {
-      printf("\nParent after first child =%d",pid1);
-      pid2=fork();
-      if(pid2!=0)
-      {
-        printf("\nParent = %d",pid2);
-      }
-      else
-      {
-        printf("\nchild pid = %d",getpid());
-      }
+        printf("\nParent = %d",pid1);
+        waitpid(pid1, &pid2, 0);
+        printf("\npid3 in parent = %d",pid3);
+
     }
     else
     {
+      pid3=-1;
+      printf("\nchild pid = %s",s);
       exit(0);
     }
 }
