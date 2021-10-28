@@ -14,21 +14,24 @@ int main(int argc, char *argv[])
     long result=99L;
     int fd[2];
     pipe(fd);
+    printf("Parent before child %d",getpid());
     pid1 = fork();
-    if(pid1==0)
+    if(pid1!=0)
     {
-      close(fd[0]);
-      write(fd[1],&result,sizeof(result));
-      printf("\nPROCESS 1");
-      close(fd[1]);
+      printf("\nParent after first child =%d",pid1);
+      pid2=fork();
+      if(pid2!=0)
+      {
+        printf("\nParent = %d",pid2);
+      }
+      else
+      {
+        printf("\nchild pid = %d",getpid());
+      }
     }
     else
     {
-      close(fd[1]);
-      long rec;
-      read(fd[0], &rec, sizeof(rec));
-      printf("\nPROCESS 2 %lu",rec);
-      close(fd[0]);
+      exit(0);
     }
 }
 

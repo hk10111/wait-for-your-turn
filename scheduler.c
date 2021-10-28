@@ -16,10 +16,10 @@ argc : number of arguments
 argv : n1,n2,n3
 */
 int arr_num[SIZE];
-long sum_p1 = 0,sum_p3=0;
+long sum_p1 = 0;
 int process1(int,int,void*);
-FILE* process2(FILE *fp,void* shmem);
-int process3(FILE *fp, int start,void *shmem);
+void process2(FILE *fp,void* shmem,int *,int n2);
+FILE* process3(FILE *fp,long *sum_p3,void *shmem,int n3,int*);
 //int n1,n2,n3;
 void* create_shared_memory(size_t size)
 {
@@ -41,81 +41,106 @@ int main(int argc, char *argv[])
     int n1 = atoi(argv[1]), n2 = atoi(argv[2]), n3 = atoi(argv[3]);
     int pid1 = 0, pid2 = 0, pid3 = 0;
 
-    int fd[2];
-    pipe(fd);
-    //creating a shared memory
+    //Creating pipes
+    int fd1[2],fd3[2];
+    pipe(fd1);
+    pipe(fd3);
+
+
+    //Creating a shared memory
     void* shmem = create_shared_memory(128);
-    char parent_message[]="0";
+    char parent_message[]="4";
     memcpy(shmem,parent_message, sizeof(parent_message));
 
     pid1 = fork();
     if (pid1 != 0)
     {
-        //close the input end
-        close(fd[1]);
+        //close the input end of both pipes
+        close(fd1[1]);
+
         pid2 = fork();
+
         if (pid2 != 0)
         {
             pid3 = fork();
-            if (pid3 == 0)
+
+            if (pid3!= 0)
             {
-              //  printf("\nchild 3 ");
-              exit(0);
-            }
-            else
-            {
+              // Master Process
+              close(fd3[1]);
               int returnStatus;
-              sleep(2);
+
               parent_message[0]='1';
+
               memcpy(shmem,parent_message, sizeof(parent_message));
 
-              sleep(0.001);
-              printf("\nFirst burst over");
-              parent_message[0]='0';
-              memcpy(shmem,parent_message, sizeof(parent_message));
-              sleep(0.1);
-              parent_message[0]='1';
-              memcpy(shmem,parent_message, sizeof(parent_message));
-              printf("\nSecond burst starts");
               waitpid(pid1, &returnStatus, 0);
-              long result_p1;
-              read(fd[0], &result_p1, sizeof(result_p1));
+              long result_p1=0L;
+              read(fd1[0], &result_p1, sizeof(result_p1));
+              close(fd1[0]);
+
               printf("\nMASTER PROCESS SUM FROM PROCESS 1 =  %lu\n",result_p1);
-              /*
-              clock_t init,t;
-              init = clock();
-              while(1)
+
+              
+              parent_message[0]='2';
+              memcpy(shmem,parent_message, sizeof(parent_message));
+              waitpid(pid2, &returnStatus, 0);
+
+              parent_message[0]='3';
+              memcpy(shmem,parent_message, sizeof(parent_message));
+              long result_p3=0L;
+              while(result_p3==0L)
               {
-                t = clock() - init;
-                double time_elapsed=((double)t)/CLOCKS_PER_SEC;
-                if(time_elapsed>TIME_QT)
+                read(fd3[0], &result_p3, sizeof(result_p3));
+              }
+              close(fd3[0]);
+              printf("\nMASTER PROCESS SUM FROM PROCESS 3 =  %lu\n",result_p3);
+              waitpid(pid3, &returnStatus, 0);
+              }
+              else
+              {
+                //Child process 3
+                long sum_p3=0;
+                close(fd3[0]);
+                FILE* fp=fopen("random.txt","r");
+                int lines_summed=0;
+                while(lines_summed<n3)
                 {
-                  parent_message=(parent_message+1)%2;
-                  memcpy(shmem, &parent_message, sizeof(parent_message));
-                  init=t;
+                  if(atoi(shmem)==3)
+                  fp=process3(fp,&sum_p3,shmem,n3,&lines_summed);
                 }
-                if(time_elapsed>2)
-                {
-                  break;
-                  /*
-                  parent_message=1;
-                  memcpy(shmem, &parent_message, sizeof(parent_message));
-                }*/
+                printf("\nChild process 3 sum = %lu",sum_p3);
+                write(fd3[1],&sum_p3,sizeof(sum_p3));
+                close(fd3[1]);
+                exit(0);
+
               }
             }
         else
         {
-            FILE *fp=fopen("random.txt","r");
+            //printf("\nchild process 2 ");
 
+            FILE *fp1=fopen("random.txt","r");
+            int lines_printed=0;
+            printf("\nChild 2 printing");
+            printf("\nShared = %d",atoi(shmem));
+            while(lines_printed<n2)
+            {
+              if(atoi(shmem)==2)
+              {
+                printf("\nYES");
+                process2(fp1,shmem,&lines_printed,n2);
+              }
+            }
+            fclose(fp1);
             exit(0);
-            //printf("\nchild 2 ");
         }
     }
     else
     {
         //close the output end of pipe
-        close(fd[0]);
-        printf("\nchild 1  %d\nmessage = %s\n",n1,shmem);
+        close(fd1[0]);
+        //printf("\nchild 1  %d\nmessage = %s\n",n1,(char*)shmem);
         time_t t;
         srand((unsigned) time(&t));
         for (int i = 0; i < n1; i++)
@@ -123,6 +148,7 @@ int main(int argc, char *argv[])
             arr_num[i] = rand()%10000;
             //printf("\n%d %d",i,arr_num[i]);
         }
+
         int track=0;
         while(track<n1)
         {
@@ -133,11 +159,13 @@ int main(int argc, char *argv[])
             printf("\nSUM intermediate = %lu\n",sum_p1);
           }
         }
-        write(fd[1],&sum_p1,sizeof(sum_p1));
-        close(fd[1]);
+        write(fd1[1],&sum_p1,sizeof(sum_p1));
+        close(fd1[1]);
+        exit(0);
     }
     return 0;
 }
+
 int Check_state(void* shmem,int i)
 {
   if(atoi(shmem)!=i)
@@ -145,6 +173,7 @@ int Check_state(void* shmem,int i)
   else
   return 1;
 }
+
 int process1(int start, int end,void* shmem)
 {
     int i = 0;
@@ -164,28 +193,31 @@ int process1(int start, int end,void* shmem)
     return i;
 }
 
-FILE* process2(FILE *fp,void* shmem)
+void process2(FILE *fp,void* shmem,int *lines_printed,int n2)
 {
+    printf("\nProcess 2\n");
     char line[500];
-    while (fgets(line, sizeof(line), fp))
+    while (fgets(line, sizeof(line), fp)&&*lines_printed<n2)
     {
         printf("%s", line);
+        *lines_printed=*lines_printed+1;
         if(Check_state(shmem,2)==0)
         break;
         /*create 2nd thread check for time quantum and break if over*/
     }
-    return fp;
 }
 
-int process3(FILE *fp, int start,void *shmem)
+FILE* process3(FILE *fp,long *sum_p3,void *shmem,int n3,int *lines_summed)
 {
     char line[500];
-    while (fgets(line, sizeof(line), fp))
+    while (fgets(line, sizeof(line), fp)&&*lines_summed<n3)
     {
-        sum_p3 += atoi(line);
+        printf("\n%d %s",*lines_summed,line);
+        *lines_summed=*lines_summed+1;
+        *sum_p3 =*sum_p3+ atoi(line);
         if(Check_state(shmem,3)==0)
         break;
         /*create 2nd thread check for time quantum and break if over*/
     }
-    return sum_p3;
+    return fp;
 }
