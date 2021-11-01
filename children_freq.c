@@ -59,18 +59,19 @@ void child_zero(void *shared_status, int fd[2], int n[3])
   double time_used = 0.0;
 
   pthread_t thread_monitor;
-  process_var *pvar;
-
+  struct process_var *pvar;
+  //Uncommenting these lines is problematic
+  /*
   pvar->shared_status = shared_status;
   pvar->turn = 1;
   pvar->active = active;
   pvar->process_id = 0;
-
+  */
   //pthread_create(&thread_monitor, NULL, monitor_comms, (void *)pvar);
 
   while (i < n[0])
   {
-    if (pvar->turn == 1)
+    if (check_status(shared_status) == 0)
     {
         sum += i;
         i += 1;
@@ -94,7 +95,7 @@ void child_zero(void *shared_status, int fd[2], int n[3])
         sleep(QUANTUM);
     }
   }
-  pvar->active=0;
+  //pvar->active=0;
   //pthread_cancel(thread_monitor);
 
   printf("\nChild 0 sum = %lu.\n", sum);
