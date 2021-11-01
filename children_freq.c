@@ -42,6 +42,7 @@ void monitor_comms(void* thread_ptr)
     }
   }
   printf("\nMonitor Thread ended\n");
+
 }
 
 
@@ -61,15 +62,15 @@ void child_zero(void *shared_status, int fd[2], int n[3])
   process_var *pvar;
 
   pvar->shared_status = shared_status;
-  pvar->turn = turn;
+  pvar->turn = 1;
   pvar->active = active;
   pvar->process_id = 0;
 
-  pthread_create(&thread_monitor, NULL, monitor_comms, (void *)pvar);
+  //pthread_create(&thread_monitor, NULL, monitor_comms, (void *)pvar);
 
   while (i < n[0])
   {
-    if (pvar->turn==1)
+    if (pvar->turn == 1)
     {
         sum += i;
         i += 1;
@@ -94,7 +95,7 @@ void child_zero(void *shared_status, int fd[2], int n[3])
     }
   }
   pvar->active=0;
-  pthread_cancel(thread_monitor);
+  //pthread_cancel(thread_monitor);
 
   printf("\nChild 0 sum = %lu.\n", sum);
   write(fd[1], &sum, sizeof(sum));
@@ -108,7 +109,6 @@ void child_zero(void *shared_status, int fd[2], int n[3])
 
 void child_one(void *shared_status, int fd[2], int n[3])
 {
-  return;
   struct timespec start, finish,burst_start,burst_finish;
   clock_gettime( CLOCK_REALTIME, &start );
 
@@ -155,8 +155,8 @@ void child_one(void *shared_status, int fd[2], int n[3])
 
 }
 
-void child_two(void *shared_status,int fd[2],int n[3]) {
-  return;
+void child_two(void *shared_status,int fd[2],int n[3])
+{
   struct timespec start, finish,burst_start,burst_finish;
   clock_gettime( CLOCK_REALTIME, &start );
 
