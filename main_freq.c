@@ -4,7 +4,7 @@
 #include <sys/mman.h>
 #include <sys/time.h>
 
-#include "children.c"
+#include "children_freq.c"
 
 typedef void (*child_type)(void *shared_status,int fd[2],int n[3]);
 
