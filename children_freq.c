@@ -8,23 +8,23 @@
 
 int check_status(void *shared_status)
 {
-  return *((int *) shared_status);
+  return *(int *)shared_status;
 }
 
 struct process_var
 {
-  void* shared_status;
+  void *shared_status;
   int active;
   int turn;
   int process_id;
 };
-typedef struct process_var process_var;
 
-void monitor_comms(void* thread_ptr)
+typedef struct process_var pv;
+
+void* monitor_comms(void *thread_ptr)
 {
-  process_var* thread_var;
-  thread_var = (process_var*)thread_ptr;
-  printf("\nComms Thread started\n");
+  pv* thread_var;
+  thread_var = (pv*)(thread_ptr);
   while(1)
   {
     if(check_status(thread_var->shared_status)==thread_var->process_id)
@@ -41,9 +41,8 @@ void monitor_comms(void* thread_ptr)
       break;
     }
   }
-  printf("\nMonitor Thread ended\n");
-
 }
+
 
 
 void child_zero(void *shared_status, int fd[2], int n[3])
@@ -58,20 +57,20 @@ void child_zero(void *shared_status, int fd[2], int n[3])
   close(fd[0]);
   double time_used = 0.0;
 
-  pthread_t thread_monitor;
-  struct process_var *pvar;
-  //Uncommenting these lines is problematic
-  /*
+  pv *pvar=(pv*)(malloc(sizeof(pv)));
+
   pvar->shared_status = shared_status;
-  pvar->turn = 1;
+  pvar->turn = 0;
   pvar->active = active;
   pvar->process_id = 0;
-  */
-  //pthread_create(&thread_monitor, NULL, monitor_comms, (void *)pvar);
+
+
+  pthread_t thread_monitor;
+  pthread_create(&thread_monitor, NULL, monitor_comms, (void *)pvar);
 
   while (i < n[0])
   {
-    if (check_status(shared_status) == 0)
+    if (pvar->turn)
     {
         sum += i;
         i += 1;
@@ -95,8 +94,7 @@ void child_zero(void *shared_status, int fd[2], int n[3])
         sleep(QUANTUM);
     }
   }
-  //pvar->active=0;
-  //pthread_cancel(thread_monitor);
+  pvar->active=0;
 
   printf("\nChild 0 sum = %lu.\n", sum);
   write(fd[1], &sum, sizeof(sum));
@@ -113,16 +111,28 @@ void child_one(void *shared_status, int fd[2], int n[3])
   struct timespec start, finish,burst_start,burst_finish;
   clock_gettime( CLOCK_REALTIME, &start );
 
-  int i = 0,enabled=0;
+  int i = 0, enabled=0;
   char line[500];
   FILE* fp=fopen("random1.txt","r");
+
+  //Process 2 does not need any pipes
   close(fd[1]);
   close(fd[0]);
   double time_used=0.0;
 
+  pv *pvar=(pv*)(malloc(sizeof(pv)));
+
+  pvar->shared_status = shared_status;
+  pvar->turn = 0;
+  pvar->active = 1;
+  pvar->process_id = 1;
+
+
+  pthread_t thread_monitor;
+  pthread_create(&thread_monitor, NULL, monitor_comms, (void *)pvar);
 
   while (i < n[1]) {
-    if (check_status(shared_status) == 1)
+    if (pvar->turn)
     {
       if(fgets(line, sizeof(line), fp))
       {
@@ -147,7 +157,7 @@ void child_one(void *shared_status, int fd[2], int n[3])
       sleep(QUANTUM);
     }
   }
-
+  pvar->active = 0;
   fclose(fp);
   clock_gettime( CLOCK_REALTIME, &finish );
 
@@ -166,6 +176,16 @@ void child_two(void *shared_status,int fd[2],int n[3])
   FILE* fp=fopen("random1.txt","r");
   close(fd[0]);
   double time_used=0.0;
+
+  pv *pvar=(pv*)(malloc(sizeof(pv)));
+
+  pvar->shared_status = shared_status;
+  pvar->turn = 0;
+  pvar->active = 1;
+  pvar->process_id = 2;
+
+  pthread_t thread_monitor;
+  pthread_create(&thread_monitor, NULL, monitor_comms, (void *)pvar);
 
   while (i < n[2]){
     if (check_status(shared_status) == 2)
@@ -193,14 +213,17 @@ void child_two(void *shared_status,int fd[2],int n[3])
       sleep(QUANTUM);
     }
   }
-
+  pvar->active = 0;
   fclose(fp);
   printf("Child 2 sum = %lu.\n", sum);
   write(fd[1], &sum, sizeof(sum));
   close(fd[1]);
 
   clock_gettime( CLOCK_REALTIME, &finish );
+  double turnaround=((double)(finish.tv_sec - start.tv_sec)+( finish.tv_nsec - start.tv_nsec )/ BILLION);
 
-  printf("\nChild 2 summary : Turnaround time = %f seconds\n",((double)(finish.tv_sec - start.tv_sec)+( finish.tv_nsec - start.tv_nsec )/ BILLION));
+  printf("\nChild 2 summary : Turnaround time = %f seconds\n",turnaround);
   printf("Time used = %f\n",time_used);
+
+
 }
