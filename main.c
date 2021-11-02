@@ -47,9 +47,7 @@ void wait_for_your_turn(shared_t *shr, int ID, struct timespec *wait) {
 void child_zero(shared_t *shr) {
   int ID = 0;
 
-  struct timespec wait;
-  wait.tv_sec = 0;
-  wait.tv_nsec = 0;
+  struct timespec wait = {0, 0};
 
   int i = 0, sum = 0;
   while (i < 100) {
@@ -74,9 +72,7 @@ void child_zero(shared_t *shr) {
 void child_one(shared_t *shr) {
   int ID = 1;
 
-  struct timespec wait;
-  wait.tv_sec = 0;
-  wait.tv_nsec = 0;
+  struct timespec wait = {0, 0};
 
   int i = 0, sum = 0;
   while (i < 1000) {
@@ -101,9 +97,7 @@ void child_one(shared_t *shr) {
 void child_two(shared_t *shr) {
   int ID = 2;
 
-  struct timespec wait;
-  wait.tv_sec = 0;
-  wait.tv_nsec = 0;
+  struct timespec wait = {0, 0};
 
   int i = 0, sum = 0;
   while (i < 100000) {
@@ -127,7 +121,7 @@ void child_two(shared_t *shr) {
 
 /**********************************************************************/
 
-pid_t start_child(shared_t *shr, child_t child, int id) {
+void start_child(shared_t *shr, child_t child, int id) {
   pid_t pid = fork();
   if (pid == 0) {
     struct timespec start, end;
@@ -143,7 +137,6 @@ pid_t start_child(shared_t *shr, child_t child, int id) {
 
     exit(0);
   }
-  return pid;
 }
 
 int all_children_dead(shared_t *shr) {
@@ -154,7 +147,7 @@ int all_children_dead(shared_t *shr) {
   return 1;
 }
 
-void schedule_rr(pid_t *children, shared_t *shr) {
+void schedule_rr(shared_t *shr) {
   struct timespec time;
   int current = 0;
 
@@ -210,13 +203,11 @@ int main() {
 
   pthread_cond_init(&shr->cond, &cond_attr);
 
-  pid_t children[3];
+  start_child(shr, child_zero, 0);
+  start_child(shr, child_one, 1);
+  start_child(shr, child_two, 2);
 
-  children[0] = start_child(shr, child_zero, 0);
-  children[1] = start_child(shr, child_one, 1);
-  children[2] = start_child(shr, child_two, 2);
-
-  schedule_rr(children, shr);
+  schedule_rr(shr);
 
   pthread_mutex_destroy(&shr->mutex);
   pthread_mutexattr_destroy(&mutex_attr);
